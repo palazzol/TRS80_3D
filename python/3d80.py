@@ -17,13 +17,13 @@ def CodeGen(f, name, addr, data):
             table[d].append(a)
         else:
             table[d] = [ a ]
-    f.write(name+':')
+    print(name+':', file=f)
     for d in table:
-        f.write("        LD      A,"+hex(d))
+        print("        LD      A,"+hex(d), file=f)
         for a in table[d]:
-            f.write("        LD      ("+hex(a)+"),A")
-    f.write("        RET")
-    f.write("")
+            print("        LD      ("+hex(a)+"),A", file=f)
+    print("        RET", file=f)
+    print("", file=f)
         
 # convert from homogenous 3D coordinates to 2D pixels
 def Convert3Dto2D(clip):

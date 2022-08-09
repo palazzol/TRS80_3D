@@ -156,14 +156,16 @@ class TRS80Display:
     
     # Pause until window is closed
     def pause(self):
-        while True:
-            self.checkexit()
+        while not self.checkexit():
+            pass
+        sys.exit(0)
     
     # Check for close window event
     def checkexit(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                sys.exit(0)
+                return True
+        return False
                 
     # Draw a line and update the display
     def drawline(self,x0,y0,x1,y1):
