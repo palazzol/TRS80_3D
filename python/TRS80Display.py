@@ -2,12 +2,17 @@
 """
 Created on Wed Sep 22 12:45:59 2021
 
-@author: frank
+@author: palazzol
 """
 
 import pygame
 import sys
-import collections
+
+# Class that simulates a TRS-80 screen, with some extra functionality:
+#   Like BASIC, can to PRINT@, SET, RESET
+#   Line drawing
+#   Save image to a file
+#   Retrieve all changes to videoram between calls to freeze() with changes()
 
 class TRS80Display:
     
@@ -29,7 +34,7 @@ class TRS80Display:
         pygame.display.set_caption("TRS-80 Model III gfx simulator")
 
         # Initialize character-based surface arrays
-        with open('8044316a.u36','rb') as f:
+        with open('..\\roms\\8044316a.u36','rb') as f:
             charrom = f.read(0x800)
             
         # create the character rom surfaces
@@ -65,15 +70,18 @@ class TRS80Display:
         # initialize videoram
         self.cls()
         
+    # Update the display from the buffer
     def update(self):
         self.raster2 = pygame.transform.scale(self.raster, (2*(512+100),2*(384+100)))
         self.screen.blit(self.raster2,(0,0))
         pygame.display.flip()
         
+    # Write to the buffer and update the display
     def write(self, addr, data):
         self.writenu(addr,data)
         self.update()
         
+    # Write to buffer without display update
     def writenu(self, addr, data):
         if addr in self.vram:
             if self.vram[addr] != data:
@@ -88,9 +96,11 @@ class TRS80Display:
         else:
             self.raster.blit(self.images[data],(col*8+50,row*24+50))
 
+    # Read from the buffer
     def read(self, addr):
         return self.vram[addr]
     
+    # Set a pixel without display update
     def setnu(self,x,y):
         col = x//2
         row = y//3
@@ -102,10 +112,12 @@ class TRS80Display:
         z = (0x80 | (z&0x3f) | (1<<bit))
         self.writenu(addr, z)
         
+    # Set a pixel and update the display
     def set(self,x,y):
         self.setnu(x,y)
         self.update()
 
+    # Reset a pixel without display update
     def resetnu(self,x,y):
         col = x//2
         row = y//3
@@ -117,19 +129,23 @@ class TRS80Display:
         z = (0x80 | (z&0x3f) & (0x3f-(1<<bit)))
         self.writenu(addr, z)
     
+    # Reset a pixel and update the display
     def reset(self,x,y):
         self.resetnu(x,y)
         self.update()
         
+    # Clear Screen and update the display
     def cls(self):
         self.clsnu()
         self.update()
         
+    # Clear Screen without display update
     def clsnu(self):
         for addr in range(0x3c00,0x4000):
             self.writenu(addr,0x20)
         self.update()
         
+    # Set/Reset ENALTSET bit and update the display
     def enaltset(self, tf):
         self.altset = tf
         for addr in range(0x3c00,0x4000):
@@ -138,18 +154,23 @@ class TRS80Display:
                 self.writenu(addr,data)
         self.update()
     
+    # Pause until window is closed
     def pause(self):
         while True:
             self.checkexit()
+    
+    # Check for close window event
     def checkexit(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit(0)
                 
+    # Draw a line and update the display
     def drawline(self,x0,y0,x1,y1):
         self.drawlinenu(x0,y0,x1,y1)
         self.update()
 
+    # Draw a line without display update
     def drawlinenu(self,x0,y0,x1,y1):
         dx =  abs(x1-x0)
         if x0<x1:
@@ -174,10 +195,12 @@ class TRS80Display:
                 err += dx
                 y0 += sy
         
+    # PRINT@ and update the display
     def printat(self,row,col,s):
         self.printatnu(row,col,s)
         self.update()
         
+    # PRINT@ without display update
     def printatnu(self,row,col,s):
         addr = 0x3c00+row*64+col
         for i in range(len(s)):
@@ -186,12 +209,15 @@ class TRS80Display:
             if addr>0x3fff:
                 break
         
+    # Save state of the screen to an image file
     def save(self,filename):
         pygame.image.save(self.screen, filename)
 
+    # Save the state of the screen into a buffer
     def freeze(self):
         self.vram_save = self.vram.copy()
         
+    # Retreive a log of all changes to the screen since the last freeze() call
     def changes(self):
         raddr = []
         rdata = []
@@ -201,7 +227,8 @@ class TRS80Display:
                 rdata.append(self.vram[addr])
         self.freeze()
         return raddr, rdata
-        
+
+# Test code
 if __name__ == "__main__":
     import time
     
