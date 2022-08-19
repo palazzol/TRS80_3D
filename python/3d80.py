@@ -43,7 +43,13 @@ def RenderFrame(left):
         d.printat(0,0,"R")
         
     pixels = Convert3Dto2D(clip)
-
+    for line in obj_linelist:
+        d.drawlinenu(pixels[line[0]][0],
+                     pixels[line[0]][1],
+                     pixels[line[1]][0],
+                     pixels[line[1]][1])
+    d.update()
+    """
     lastp = pixels[0]
     for p in pixels[1:]:
         d.drawlinenu(lastp[0],lastp[1],p[0],p[1])
@@ -51,6 +57,7 @@ def RenderFrame(left):
     #p = pixels[0]
     #d.drawlinenu(lastp[0],lastp[1],p[0],p[1])
     d.update()
+    """
 
 if __name__ == "__main__":
     
@@ -114,6 +121,7 @@ if __name__ == "__main__":
               [-d,-d,z2,1],
               [-d,d,z2,1]]).transpose()
     """
+    """
     obj = np.array([[-d,d,z2,1],
                     [d,d,z2,1],
                     [d,-d,z2,1],
@@ -134,6 +142,32 @@ if __name__ == "__main__":
                     
                     [d,d,z1,1],
                     [-d,d,z1,1]]).transpose()
+    """
+    # Nodelist, to be transformed
+    obj = np.array(
+                   [[-d,d,z2,1],  
+                    [d,d,z2,1],   
+                    [d,-d,z2,1],  
+                    [-d,-d,z2,1], 
+                    [-d,d,z1,1],  
+                    [-d,-d,z1,1], 
+                    [d,-d,z1,1],  
+                    [d,d,z1,1]]).transpose()  
+
+    # Wirelist, to be used in rendering
+    obj_linelist = np.array(
+                   [[0,1],
+                    [1,2],
+                    [2,3],
+                    [3,0],
+                    [0,4],
+                    [4,5],
+                    [5,3],
+                    [5,6],
+                    [6,2],
+                    [6,7],
+                    [7,1],
+                    [7,4]])
 
     # Perspective Projection Matrix
     pers = np.array([[1,0,0,0],
