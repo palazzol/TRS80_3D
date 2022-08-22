@@ -1,0 +1,44 @@
+
+[Camera]
+distance_in = 48
+pupildist_in = 2.5
+frontclip_in = 4
+backclip_in = 4 
+perspective = true  # Choose Perspective or Planar projection
+objscale_in = 3.75
+
+[Object]
+nodelist = [
+    [-1.0, 1.0, 1.0],
+    [ 1.0, 1.0, 1.0],
+    [ 1.0,-1.0, 1.0],
+    [-1.0,-1.0, 1.0],
+    [-1.0, 1.0,-1.0],
+    [-1.0,-1.0,-1.0],
+    [ 1.0,-1.0,-1.0],
+    [ 1.0, 1.0,-1.0]
+]
+
+linelist = [
+    [0,1],
+    [1,2],
+    [2,3],
+    [3,0],
+    [0,4],
+    [4,5],
+    [5,3],
+    [5,6],
+    [6,2],
+    [6,7],
+    [7,1],
+    [7,4]
+]
+
+init_rot_x = 15.0
+init_rot_y = 0.0
+init_rot_z = 15.0
+
+frame_rot_x = 0.0
+frame_rot_y = 6.0
+frame_rot_z = 0.0
+

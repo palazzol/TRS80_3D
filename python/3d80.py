@@ -5,6 +5,11 @@ Created on Thu Sep 30 14:21:19 2021
 @author: frank
 """
 
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+
 import time
 import os
 
@@ -59,6 +64,40 @@ def RenderFrame(left):
     d.update()
     """
 
+def makerot_x(degrees):
+    theta = degrees*np.pi/180.0
+    s = np.sin(theta)
+    c = np.cos(theta)
+    return np.array([[1,0,0,0],
+                     [0,c,s,0],
+                     [0,-s,c,0],
+                     [0,0,0,1]])
+
+def makerot_y(degrees):
+    # rotation matrix around Y axis, from X to Z
+    theta = degrees*np.pi/180.0
+    s = np.sin(theta)
+    c = np.cos(theta)
+    return np.array([[c,0,s,0],
+                     [0,1,0,0],
+                     [-s,0,c,0],
+                     [0,0,0,1]])
+
+def makerot_z(degrees):
+    theta = degrees*np.pi/180.0
+    s = np.sin(theta)
+    c = np.cos(theta)
+    return np.array([[c,s,0,0],
+                     [-s,c,0,0],
+                     [0,0,1,0],
+                     [0,0,0,1]])
+
+def maketrans(vector):
+    return np.array([[1,0,0,vector[0]*conversion],
+                     [0,1,0,vector[1]*conversion],
+                     [0,0,1,vector[2]*conversion],
+                     [0,0,0,1]])
+                     
 if __name__ == "__main__":
     
     import TRS80Display
@@ -71,6 +110,7 @@ if __name__ == "__main__":
     parser.add_argument('-l','--loop',default=False,help='Loop display',required=False,action="store_true")
     parser.add_argument('-m','--movie',default='',help='Render to movie file',required=False)
     parser.add_argument('-c','--code',default='',help='Render to assembly code',required=False)
+    parser.add_argument('shapefilename', nargs=1)
     global_args = parser.parse_args()
 
     if global_args.movie:
@@ -91,83 +131,103 @@ if __name__ == "__main__":
     # Scene is along the +Z axis, centered at X,Y,Z = (0,0,384.0)
     # Y is up, X is left
     
-    distance = 48
-    
-    doperspective = True        # Choose Perspective or Planar projection
-    
-    conversion = 16.0           # units/in
-    pupildist = 2.5*conversion  # 2.5in
-    mid = distance*conversion         # 24in to screen
-    front = (distance-4)*conversion   # near clipping plane             
-    rear = (distance+4)*conversion    # far clipping plane
-    
-    # scale objects differently depending on the projection
-    if doperspective:
-        #d = 80.0
-        d = 60.0
-    else:
-        #d = 40.0
-        d = 30.0
-        
-    # object is part square and part triangle
-    z1 = mid-d # square
-    z2 = mid+d # triangle
-    """
-    obj = np.array([[d,d,z1,1],
-              [d,-d,z1,1],
-              [-d,-d,z1,1],
-              [-d,d,z1,1],
-              [d,0,z2,1],
-              [-d,-d,z2,1],
-              [-d,d,z2,1]]).transpose()
-    """
-    """
-    obj = np.array([[-d,d,z2,1],
-                    [d,d,z2,1],
-                    [d,-d,z2,1],
-                    [-d,-d,z2,1],
-                    [-d,d,z2,1],
-                    
-                    [-d,d,z1,1],
-                    [-d,-d,z1,1],
-                    [-d,-d,z2,1],
-                    
-                    [-d,-d,z1,1],
-                    [d,-d,z1,1],
-                    [d,-d,z2,1],
-                    
-                    [d,-d,z1,1],
-                    [d,d,z1,1],
-                    [d,d,z2,1],
-                    
-                    [d,d,z1,1],
-                    [-d,d,z1,1]]).transpose()
-    """
-    # Nodelist, to be transformed
-    obj = np.array(
-                   [[-d,d,z2,1],  
-                    [d,d,z2,1],   
-                    [d,-d,z2,1],  
-                    [-d,-d,z2,1], 
-                    [-d,d,z1,1],  
-                    [-d,-d,z1,1], 
-                    [d,-d,z1,1],  
-                    [d,d,z1,1]]).transpose()  
+    with open(f'{global_args.shapefilename[0]}','rb') as f:
+        shape = tomllib.load(f)
 
-    # Wirelist, to be used in rendering
-    obj_linelist = np.array(
-                   [[0,1],
-                    [1,2],
-                    [2,3],
-                    [3,0],
-                    [0,4],
-                    [4,5],
-                    [5,3],
-                    [5,6],
-                    [6,2],
-                    [6,7],
-                    [7,1],
-                    [7,4]])
+    conversion = 16.0           # units/in
+
+    # defaults
+
+    distance_in = 48
+    
+    perspective = True        # Choose Perspective or Planar projection
+    pupildist_in = 2.5          # 2.5in
+    frontclip_in = 4
+    backclip_in = 4
+    objscale_in = 3.75
+
+    init_rot_x = 0.0
+    init_rot_y = 0.0
+    init_rot_z = 0.0
+
+    frame_rot_x = 0.0
+    frame_rot_y = 0.0
+    frame_rot_z = 0.0
+
+    if 'Camera' in shape:
+        camera = shape['Camera']
+        if 'distance_in' in camera:
+            distance_in = camera['distance_in']
+        if 'pupildist_in' in camera:
+            pupildist_in = camera['pupildist_in']
+        if 'frontclip_in' in camera:
+            frontclip_in = camera['frontclip_in']
+        if 'backclip_in' in camera:
+            backclip_in = camera['backclip_in']
+        if 'perspective' in camera:
+            perspective = camera['perspective']
+        else:
+            # default scale objects differently depending on the projection
+            if perspective:
+                #objscale_in = 5.0
+                objscale_in = 3.75
+            else:
+                #objscale_in = 2.5
+                objscale_in = 1.875
+        if 'objscale_in' in camera:
+            objscale_in = camera['objscale_in']
+
+    if 'Object' in shape:
+        object = shape['Object']
+        if 'nodelist' in object:
+            nodelist = object['nodelist']
+        else:
+            print('No nodelist in Object')
+            sys.exit(-1)
+        if 'linelist' in object:
+            linelist = object['linelist']
+        else:
+            print('No linelist in Object')
+            sys.exit(-1)
+
+        if 'init_rot_x' in object:
+            init_rot_x = object['init_rot_x']
+        if 'init_rot_y' in object:
+            init_rot_y = object['init_rot_y']
+        if 'init_rot_z' in object:
+            init_rot_z = object['init_rot_z']
+
+        if 'frame_rot_x' in object:
+            frame_rot_x = object['frame_rot_x']
+        if 'frame_rot_y' in object:
+            frame_rot_y = object['frame_rot_y']
+        if 'frame_rot_z' in object:
+            frame_rot_z = object['frame_rot_z']
+    else:
+        print('No Object in shape file')
+        sys.exit(-1)
+
+    pupildist = pupildist_in*conversion
+    mid = distance_in*conversion         # 24in to screen
+    front = (distance_in-frontclip_in)*conversion   # near clipping plane
+    rear = (distance_in+backclip_in)*conversion    # far clipping plane
+    d = objscale_in*conversion
+
+    # Scale, and Transform object to object center 
+    for i in range(0,len(nodelist)):
+        nodelist[i][0] *= d
+        nodelist[i][1] *= d
+        nodelist[i][2] *= d
+        nodelist[i][2] += distance_in*conversion
+
+    # Nodelist, to be transformed
+    obj = []
+    for i in range(0,len(nodelist)):
+        obj.append([ nodelist[i][0], nodelist[i][1], nodelist[i][2], 1.0 ])
+    obj = np.array(obj).transpose()
+    
+    # Linelist, to be used in rendering
+    obj_linelist = np.array(linelist)
 
     # Perspective Projection Matrix
     pers = np.array([[1,0,0,0],
@@ -181,66 +241,33 @@ if __name__ == "__main__":
                      [0,0,1,0],
                      [0,0,0,1]])
     
-    if doperspective:
+    if perspective:
         proj = pers
     else:
         proj = plan
     
     # translation matrix from object center to origin (camera)
-    t1 = np.array([[1,0,0,0],
-                     [0,1,0,0],
-                     [0,0,1,-mid],
-                     [0,0,0,1]])
-    
+    t1 = maketrans([0.0,0.0,-distance_in])
+
     # translation matrix from origin (camera) to object center
-    t2 = np.array([[1,0,0,0],
-                     [0,1,0,0],
-                     [0,0,1,mid],
-                     [0,0,0,1]])
+    t2 = maketrans([0.0,0.0,distance_in])
     
     theta = 15*np.pi/180.0
     s = np.sin(theta)
     c = np.cos(theta)
     
-    rotatex = np.array([[1,0,0,0],
-                       [0,c,s,0],
-                       [0,-s,c,0],
-                       [0,0,0,1]])
-    
-    theta = 15*np.pi/180.0
-    s = np.sin(theta)
-    c = np.cos(theta)
-    
-    rotatez = np.array([[c,s,0,0],
-                       [-s,c,0,0],
-                       [0,0,1,0],
-                       [0,0,0,1]])
-    
-    # rotation matrix around Y axis, theta degrees, from X to Z
-    theta = 6*np.pi/180.0
-    s = np.sin(theta)
-    c = np.cos(theta)
-    
-    rotate = np.array([[c,0,s,0],
-                       [0,1,0,0],
-                       [-s,0,c,0],
-                       [0,0,0,1]])
+    irotatex = makerot_x(init_rot_x)
+    irotatey = makerot_y(init_rot_y)
+    irotatez = makerot_z(init_rot_z)
+
+    frotatex = makerot_x(frame_rot_x)
+    frotatey = makerot_y(frame_rot_y)
+    frotatez = makerot_z(frame_rot_z)
     
     # rotation matrix around Y axis, rotate camera around obj from center to left eye pos
     angle = np.arctan2(pupildist,mid)
-    c = np.cos(angle)
-    s = np.sin(angle)
-    
-    rotatel = np.array([[c,0,s,0],
-                       [0,1,0,0],
-                       [-s,0,c,0],
-                       [0,0,0,1]])
-    
-    # rotation matrix around Y axis, rotate camera around obj from center to right eye pos
-    rotater = np.array([[c,0,-s,0],
-                       [0,1,0,0],
-                       [s,0,c,0],
-                       [0,0,0,1]])
+    rotatel = makerot_y(angle*180.0/np.pi)
+    rotater = makerot_y(-angle*180.0/np.pi)
     
     # distance adjustment - eye position is slightly further away from object than center pos 
     dadj = np.sqrt(mid*mid-pupildist*pupildist)-mid
@@ -263,12 +290,12 @@ if __name__ == "__main__":
     
     # rotation matrix to spin the object each frame
     # translate obj to origin, spin it, put it back
-    R = t2.dot(rotate).dot(t1)
+    R = t2.dot(frotatez).dot(frotatey).dot(frotatex).dot(t1)
     
     d = TRS80Display.TRS80Display()
     
     # initial rotation
-    Rinit = t2.dot(rotatez).dot(rotatex).dot(t1)
+    Rinit = t2.dot(irotatez).dot(irotatey).dot(irotatex).dot(t1)
     obj = Rinit.dot(obj)
     # Save this orientation, for multiple render types
     saved_obj = obj.copy()
