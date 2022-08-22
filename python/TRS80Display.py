@@ -24,12 +24,12 @@ class TRS80Display:
     vram = {}
     dirty = {}
     
-    def __init__(self):
+    def __init__(self, border_color=0x00):
         pygame.init()
         self.screen = pygame.display.set_mode((2*(512+100),2*(384+100)))
-        self.screen.fill((0, 0, 0))
+        self.screen.fill(border_color)
         self.raster = pygame.Surface((512+100,384+100), flags=0, depth=8)
-        self.raster.fill((0, 0, 0))
+        self.raster.fill(border_color)
         self.raster.convert(self.screen)
         pygame.display.set_caption("TRS-80 Model III gfx simulator")
 
@@ -102,6 +102,10 @@ class TRS80Display:
     
     # Set a pixel without display update
     def setnu(self,x,y):
+        if x<0 or x>127:
+            return
+        if y<0 or y>47:
+            return
         col = x//2
         row = y//3
         addr = 0x3c00+row*64+col
@@ -119,6 +123,10 @@ class TRS80Display:
 
     # Reset a pixel without display update
     def resetnu(self,x,y):
+        if x<0 or x>127:
+            return
+        if y<0 or y>47:
+            return
         col = x//2
         row = y//3
         addr = 0x3c00+row*64+col
