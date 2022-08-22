@@ -141,9 +141,8 @@ if __name__ == "__main__":
     distance_in = 48
     
     perspective = True        # Choose Perspective or Planar projection
-    pupildist_in = 2.5          # 2.5in
+    pupildist_in = 2.5        # 2.5in
     frontclip_in = 4
-    backclip_in = 4
     objscale_in = 3.75
 
     init_rot_x = 0.0
@@ -154,6 +153,8 @@ if __name__ == "__main__":
     frame_rot_y = 0.0
     frame_rot_z = 0.0
 
+    num_frames = 60
+
     if 'Camera' in shape:
         camera = shape['Camera']
         if 'distance_in' in camera:
@@ -162,8 +163,6 @@ if __name__ == "__main__":
             pupildist_in = camera['pupildist_in']
         if 'frontclip_in' in camera:
             frontclip_in = camera['frontclip_in']
-        if 'backclip_in' in camera:
-            backclip_in = camera['backclip_in']
         if 'perspective' in camera:
             perspective = camera['perspective']
         else:
@@ -203,6 +202,10 @@ if __name__ == "__main__":
             frame_rot_y = object['frame_rot_y']
         if 'frame_rot_z' in object:
             frame_rot_z = object['frame_rot_z']
+
+        if 'num_frames' in object:
+            num_frames = object['num_frames']
+
     else:
         print('No Object in shape file')
         sys.exit(-1)
@@ -210,7 +213,6 @@ if __name__ == "__main__":
     pupildist = pupildist_in*conversion
     mid = distance_in*conversion         # 24in to screen
     front = (distance_in-frontclip_in)*conversion   # near clipping plane
-    rear = (distance_in+backclip_in)*conversion    # far clipping plane
     d = objscale_in*conversion
 
     # Scale, and Transform object to object center 
@@ -233,7 +235,7 @@ if __name__ == "__main__":
     pers = np.array([[1,0,0,0],
                      [0,1,0,0],
                      [0,0,1,0],
-                     [0,0,1.0/front,1]])
+                     [0,0,1.0/front,0]])
     
     # Planar projection Matrix
     plan = np.array([[1,0,0,0],
@@ -251,10 +253,6 @@ if __name__ == "__main__":
 
     # translation matrix from origin (camera) to object center
     t2 = maketrans([0.0,0.0,distance_in])
-    
-    theta = 15*np.pi/180.0
-    s = np.sin(theta)
-    c = np.cos(theta)
     
     irotatex = makerot_x(init_rot_x)
     irotatey = makerot_y(init_rot_y)
@@ -305,7 +303,7 @@ if __name__ == "__main__":
         print('Rendering movie file...')
         obj = saved_obj.copy()
         img_array = []
-        for i in range(0,60):
+        for i in range(0,num_frames):
             d.clsnu()
             RenderFrame(True)
             d.save("temp.png")
@@ -366,19 +364,20 @@ if __name__ == "__main__":
     # Render animation until user exit
     if global_args.loop:
         print('Rendering animation to screen...')
-        obj = saved_obj.copy()
         while True:
-            d.clsnu()
-            RenderFrame(True)
-            time.sleep(1/60.0)
-            d.clsnu()
-            RenderFrame(False)
-            time.sleep(1/60.0)
-            
-            obj = R.dot(obj)
-            if d.checkexit():
-                print('Done!')
-                sys.exit(0)
+            obj = saved_obj.copy()
+            for i in range(0,num_frames):
+                d.clsnu()
+                RenderFrame(True)
+                time.sleep(1/60.0)
+                d.clsnu()
+                RenderFrame(False)
+                time.sleep(1/60.0)
+                
+                obj = R.dot(obj)
+                if d.checkexit():
+                    print('Done!')
+                    sys.exit(0)
 
     """
     # Emit a Stereo movie (not working yet)

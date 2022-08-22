@@ -2,10 +2,9 @@
 [Camera]
 distance_in = 48
 pupildist_in = 2.5
-frontclip_in = 4
-backclip_in = 4 
+frontclip_in = 2.00
 perspective = false # Choose Perspective or Planar projection
-objscale_in = 1.875
+objscale_in = 2.00
 
 [Object]
 nodelist = [
@@ -41,3 +40,5 @@ init_rot_z = 15.0
 frame_rot_x = 0.0
 frame_rot_y = 6.0
 frame_rot_z = 0.0
+
+num_frames = 60
