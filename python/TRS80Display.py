@@ -239,7 +239,7 @@ if __name__ == "__main__":
     # test print
     d.printat(0,32-6,"Hello TRS-80!")
     s = ''
-    for i in range(0,255):
+    for i in range(0,256):
         s+=chr(i)
     d.printat(1,0,s)
     time.sleep(1)
