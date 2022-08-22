@@ -308,25 +308,26 @@ if __name__ == "__main__":
         for i in range(0,60):
             d.clsnu()
             RenderFrame(True)
-            d.save("temp.jpg")
-            img = cv2.imread("temp.jpg")
+            d.save("temp.png")
+            img = cv2.imread("temp.png")
             img_array.append(img)
             d.clsnu()
             RenderFrame(False)
             d.save("temp.jpg")
-            img = cv2.imread("temp.jpg")
+            img = cv2.imread("temp.png")
             img_array.append(img)
             obj = R.dot(obj)
             if d.checkexit():
                 print('Operation Aborted')
-                os.remove("temp.jpg")
+                os.remove("temp.png")
                 sys.exit(-1)
-        os.remove("temp.jpg")
+        os.remove("temp.png")
 
         height, width, layers = img_array[0].shape
         size = (width,height)
         
-        out = cv2.VideoWriter(global_args.movie,cv2.VideoWriter_fourcc(*'DIVX'), 60, size)
+        out = cv2.VideoWriter(global_args.movie,cv2.VideoWriter_fourcc(*'XVID'), 60, size)
+        #out = cv2.VideoWriter(global_args.movie,cv2.VideoWriter_fourcc(*'DIVX'), 60, size)
         for i in range(len(img_array)):
             out.write(img_array[i])
         out.release()
