@@ -226,12 +226,12 @@ class TRS80Display:
     # Save the state of the screen into a buffer
     def freeze(self):
         self.vram_save = self.vram.copy()
-        
+
     # Retreive a log of all changes to the screen since the last freeze() call
     def changes(self):
         raddr = []
         rdata = []
-        for addr in range(0x3c00, 0x3fff):
+        for addr in range(0x3c00, 0x4000):
             if self.vram[addr] != self.vram_save[addr]:
                 raddr.append(addr)
                 rdata.append(self.vram[addr])
