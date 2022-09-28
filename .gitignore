@@ -1,0 +1,8 @@
+
+# Python temp files
+*.pyc
+__pycache__/
+
+# File to ignore here
+not_in_git/
+
