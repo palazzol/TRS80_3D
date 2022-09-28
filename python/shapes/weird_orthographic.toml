@@ -2,7 +2,7 @@
 [Camera]
 distance_in = 48
 pupildist_in = 2.5
-frontclip_in = 2
+frontclip_in = 2.0
 perspective = false # Choose Perspective or Planar projection
 objscale_in = 2.0
 

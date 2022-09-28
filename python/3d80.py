@@ -29,7 +29,16 @@ def CodeGen(f, name, addr, data):
             print("        LD      ("+hex(a)+"),A", file=f)
     print("        RET", file=f)
     print("", file=f)
-        
+
+def DataGen(f, name, data):
+    print(f"{name}:", file=f)
+    for i in range(0, 0x0400, 0x10):
+        print("        .db     ", file=f, end='')
+        for j in range(0x0f):
+            print(f"0x{data[i+j]:02x},", file=f, end='')
+        j=j+1
+        print(f"0x{data[i+j]:02x}", file=f)
+
 # convert from homogenous 3D coordinates to 2D pixels
 def Convert3Dto2D(clip):
     rv = []
@@ -110,6 +119,7 @@ if __name__ == "__main__":
     parser.add_argument('-l','--loop',default=False,help='Loop display',required=False,action="store_true")
     parser.add_argument('-m','--movie',default='',help='Render to movie file',required=False)
     parser.add_argument('-c','--code',default='',help='Render to assembly code',required=False)
+    parser.add_argument('-c2', '--code2', default='', help='Render to assembly code, blit', required=False)
     parser.add_argument('shapefilename', nargs=1)
     global_args = parser.parse_args()
 
@@ -359,6 +369,25 @@ if __name__ == "__main__":
                     print('Operation Aborted')
                     os.remove(global_args.code)
                     sys.exit(-1)
+        print('Done!')
+
+    if global_args.code2:
+        print('Rendering assembly code...')
+        with open(global_args.code2, 'w') as f:
+            obj = saved_obj.copy()
+            # Emit One Stereo Frame
+            RenderFrame(True)
+            data = []
+            for i in range(0x3c00, 0x4000):
+                data.append(d.vram[i])
+            DataGen(f, 'LDATA', data)
+            d.freeze()
+            d.clsnu()
+            RenderFrame(False)
+            data = []
+            for i in range(0x3c00, 0x4000):
+                data.append(d.vram[i])
+            DataGen(f, 'RDATA', data)
         print('Done!')
 
     # Render animation until user exit
