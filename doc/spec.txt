@@ -1,0 +1,23 @@
+
+Generating 3D movies - stereo or not:
+
+Python code:
+    Defines movie (done)
+    Generates data file for each frame, consisting of 2D line drawing statements:
+        move to pixel
+        drawline to pixel
+
+Assembly Code:
+    Two phases - generating, and rendering
+    Generating -
+        draw each frame from line drawing primitives, save to RAMBO
+    Rendering -
+        load each from from rambo for viewing
+
+For now:
+    one exe combines program and data
+
+Stretch goals
+    put data for movie in its own file
+    Main proram loads and renders each, perhaps with file picker
+
