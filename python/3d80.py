@@ -73,6 +73,20 @@ def RenderFrame(left):
     d.update()
     """
 
+def CalcFrameData(left):
+    data = []
+    if left:
+        clip = proj.dot(lstack).dot(obj)
+    else:
+        clip = proj.dot(rstack).dot(obj)
+    pixels = Convert3Dto2D(clip)
+    for line in obj_linelist:
+        data.append([pixels[line[0]][0],
+                     pixels[line[0]][1],
+                     pixels[line[1]][0],
+                     pixels[line[1]][1]])
+    return data
+
 def makerot_x(degrees):
     theta = degrees*np.pi/180.0
     s = np.sin(theta)
@@ -120,6 +134,7 @@ if __name__ == "__main__":
     parser.add_argument('-m','--movie',default='',help='Render to movie file',required=False)
     parser.add_argument('-c','--code',default='',help='Render to assembly code',required=False)
     parser.add_argument('-c2', '--code2', default='', help='Render to assembly code, blit', required=False)
+    parser.add_argument('-c3', '--code3', default='', help='Render to assembly code, movie', required=False)
     parser.add_argument('shapefilename', nargs=1)
     global_args = parser.parse_args()
 
@@ -390,6 +405,35 @@ if __name__ == "__main__":
             DataGen(f, 'RDATA', data)
         print('Done!')
 
+    # Render Movie data to code!
+    if global_args.code3:
+        print(f'Rendering {num_frames} Frames of Movie Data...')
+        with open(global_args.code3, 'wb') as f:
+            obj = saved_obj.copy()
+            f.write(2*num_frames.to_bytes(1, 'big'))
+            for i in range(0,num_frames):
+                # Emit One Stereo Frame
+                data = CalcFrameData(True)
+                f.write(b'L')
+                f.write(len(data).to_bytes(1, 'big'))
+                for line in data:
+                    f.write(int(line[0]).to_bytes(1, 'big'))
+                    f.write(int(line[1]).to_bytes(1, 'big'))
+                    f.write(int(line[2]).to_bytes(1, 'big'))
+                    f.write(int(line[3]).to_bytes(1, 'big'))
+                data = CalcFrameData(False)
+                f.write(b'R')
+                f.write(len(data).to_bytes(1, 'big'))
+                for line in data:
+                    f.write(int(line[0]).to_bytes(1, 'big'))
+                    f.write(int(line[1]).to_bytes(1, 'big'))
+                    f.write(int(line[2]).to_bytes(1, 'big'))
+                    f.write(int(line[3]).to_bytes(1, 'big'))
+                obj = R.dot(obj)
+            f.write(b'E')
+            f.write(b'\x00')
+        print('Done!')
+        
     # Render animation until user exit
     if global_args.loop:
         print('Rendering animation to screen...')
