@@ -28,9 +28,10 @@ VDRV   - rising edge every line 192 U20-8 U21-5 U83-3
 VDRV/2 - rising/falling edge every line 192 U83-2,6,11
 D6A - U95-14 U94-14 U101-8 
 
-VDRV:
-U83-3 to U99-11
-U99-13 to U101-8
+VDRV -> D6A Modification
+2 jumper wires
+U83-3 (VDRV) to U99-11 (LS244 in)
+U99-13 (LS244 out) to U101-8 (D6A)
 
 VDRV - HIGH ON COUNT 8 - 192
      - LOW ON COUNT 11(0)

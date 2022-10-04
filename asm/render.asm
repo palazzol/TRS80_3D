@@ -8,31 +8,32 @@ START:
 
 ;       RAM Variables
 
-MTYPE:  .byte   1       ; movie type, 0=mono, 1=stereo
-SIDE:   .byte   1       ; left frame first = 0, right frame first = 1
-NFRAMES:.byte   1       ; number of frames for this movie
-NLINES: .byte   1       ; number of lines for this frame
+MTYPE:  .blkb   1       ; movie type, 0=mono, 1=stereo
+SIDE:   .blkb   1       ; left frame first = 0, right frame first = 1
+NFRAMES:.blkw   1       ; number of frames for this movie
+NLINES: .blkb   1       ; number of lines for this frame
 
-X1:     .byte   1       ; Args for line draw...
-Y1:     .byte   1       ; (updated by line draw)
-X2:     .byte   1
-Y2:     .byte   1
+X1:     .blkb   1       ; Args for line draw...
+Y1:     .blkb   1       ; (updated by line draw)
+X2:     .blkb   1
+Y2:     .blkb   1
 
-BUF:    .byte   1       ; buffer for cassout bits 
+BUF:    .blkb   1       ; buffer for cassout bits 
 
 ; line draw variables
-SX:     .byte   1       ; increment direction for X
-SY:     .byte   1       ; increment direction for Y
-DX:     .word   1       ; two byte delta X
-DY:     .word   1       ; two byte delta Y
-ERR:    .word   1       ; Error value
-E2:     .word   1       ; Error value * 2
+SX:     .blkb   1       ; increment direction for X
+SY:     .blkb   1       ; increment direction for Y
+DX:     .blkw   1       ; two byte delta X
+DY:     .blkw   1       ; two byte delta Y
+ERR:    .blkw   1       ; Error value
+E2:     .blkw   1       ; Error value * 2
 
 ;
 ;   Read the movie definition
 ;   (All registers preserved)
 
-;       Clear screen routine here
+;       Clear screen routine
+;       (adapted from William Barden Book)
 CLS:    
         PUSH    AF
         PUSH    BC
@@ -50,15 +51,15 @@ $LOOP:  LD      (HL),B
         RET 
 
 ;       Fast Set Routine
+;       (adapted from William Barden Book)
+;
 ;       Input: HL -> Location of table holding X, Y
-
 FSETGR:
         PUSH    AF
         PUSH    BC
         PUSH    DE 
         PUSH    IX 
         PUSH    IY
-
         PUSH    HL
         POP     IX
         LD      D,0
@@ -142,19 +143,21 @@ TABLEA  .equ    .-FSETGR
         .word   0x3fc0+4
         .word   0x3fc0+16
 
-;   Time Delay
+;   Time Delay routine
+;       (adapted from William Barden Book)
+; 
 ;   INPUT: HL -> milliseconds
-TIMEDL:
-        PUSH    BC
-        PUSH    DE
-        LD      DE,1
-$dly1:  LD      B,134
-$dly2:  DJNZ    $dly2
-        SBC     HL,DE
-        JR      NZ,$dly1
-        POP     DE
-        POP     BC
-        RET
+;TIMEDL:
+;        PUSH    BC
+;        PUSH    DE
+;        LD      DE,1
+;$dly1:  LD      B,134
+;$dly2:  DJNZ    $dly2
+;        SBC     HL,DE
+;        JR      NZ,$dly1
+;        POP     DE
+;        POP     BC
+;        RET
 
 ;        Initialize RAMBO Board
 WRITERBO:
@@ -172,14 +175,23 @@ WRITERBO:
         POP     AF
         RET
 
+;       Main starts here
+
 START2:
         CALL    CLS             ; clear the screen
         CALL    WRITERBO        ; initialize RAMBO
 
+        LD      A,0
+        OUT     (0xE0),A
+        OUT     (0xE4),A
+        LD      A,0x10          ; Enable EXTIOSEL, No video wait
+        OUT     (0xEC),A
+
         LD      HL,MOVIE        ; Init to data start
-        LD      A,(HL)          ; Read number of frames
+        LD      DE,(MOVIE)      ; Read number of frames
         INC     HL
-        LD      (NFRAMES),A     
+        INC     HL
+        LD      (NFRAMES),DE
 
         LD      A,(HL)          ; Read the first frame type
         INC     HL
@@ -209,7 +221,7 @@ MONO:   LD      A,0
         LD      (MTYPE),A
         JR      AHEAD
 
-;;;;;;;;;;;;;;;;;;;;;;;;;
+;       Read a Frame
 
 NFRAME:
         LD      A,(HL)          ; read frame code
@@ -217,6 +229,11 @@ NFRAME:
         CP      'E
         JR      Z,ANIMATE
 AHEAD:  
+;        LD      (0x3C00),A      ; MARK THIS FRAME
+;        LD      (0x3C3F),A      ; MARK THIS FRAME
+;        LD      (0x3FC0),A      ; MARK THIS FRAME
+;        LD      (0x3FFF),A      ; MARK THIS FRAME
+
         LD      A,(HL)          ; read number of lines
         INC     HL
         LD      (NLINES),A 
@@ -225,8 +242,8 @@ AHEAD:
 NLINE:
         CALL    DOLINE
         DJNZ    NLINE
-
-;       Save a frame to RAMBO
+        
+;       Save a Frame to RAMBO
 
 SAVFRM:
         PUSH    HL
@@ -261,8 +278,6 @@ LFIRST:
         LD      (BUF),A
 
 READRBO:
-        PUSH    AF
-        PUSH    BC
         LD      A,0x20     ; Inc on Read, Address 0x000000
         LD      C,0xD0
         OUT     (C),A 
@@ -271,45 +286,46 @@ READRBO:
         OUT     (C),A 
         LD      C,0xD3
         OUT     (C),A
-        POP     BC
-        POP     AF
       
-        LD      A,(NFRAMES)
-        LD      B,A
+        LD      DE,(NFRAMES)    ; Frame Counter
 
 LODFRM:
+        ; get ready for next frame
+        LD      B,0
+        LD      C,0xD1
+        LD      HL,0x3C00
+        LD      A,(BUF)
+        RRCA 
+        LD      (BUF),A
 
         ; wait for end of vblank
+        ; (VDRV goes from 1->0)
 LOOP3:  IN      A,(0xFF)
         BIT     6,A
         JP      NZ,LOOP3
 
         ; wait for start of vblank
+        ; (VDRV goes from 0->1)
 LOOP4:  IN      A,(0xFF)
         BIT     6,A
         JP      Z,LOOP4
 
         ; switch to next frame
-        LD      C,0xFF
         LD      A,(BUF)
-        RRCA 
-        LD      (BUF),A
-        AND     0x03
-        OUT     (C),A
+;        AND     0x03
+        OUT     (0xFF),A
 
-        PUSH    HL
-        PUSH    BC
-        LD      HL,0x3C00
-        LD      C,0xD1
-        LD      B,0x00
-        INIR    
-        INIR    
-        INIR    
-        INIR    
-        POP     BC
-        POP     HL
+        ; transfer 1K from RAMBO to screen
+        ; HL, Band C are set already
+        INIR
+        INIR
+        INIR
+        INIR
 
-        DJNZ    LODFRM
+        DEC     DE
+        LD      A,D 
+        OR      E
+        JR      NZ,LODFRM
 
         JR      READRBO
 
@@ -331,15 +347,15 @@ DOLINE:
         INC     HL
         LD      (Y2),A
 
-;       WIP - draw a line on the screen
-;       for now, we will draw the end points first
+;       draw a line on the screen
 
-        PUSH    HL
-        LD      HL,#X1
-        CALL    FSETGR
-        LD      HL,#X2
-        CALL    FSETGR
-        POP     HL
+;       for now, we will draw the end points first
+;        PUSH    HL
+;        LD      HL,#X1
+;        CALL    FSETGR
+;        LD      HL,#X2
+;        CALL    FSETGR
+;        POP     HL
 
         CALL    BRES 
 

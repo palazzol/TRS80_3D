@@ -6,3 +6,12 @@ __pycache__/
 # File to ignore here
 not_in_git/
 
+*.hlr
+*.rel
+*.s19
+*.lst
+*.sym
+*.map
+*.hex
+
+
